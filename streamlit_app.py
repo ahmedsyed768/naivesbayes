@@ -11,51 +11,10 @@ from sklearn.pipeline import make_pipeline
 # Downloading necessary NLTK data
 nltk.download('vader_lexicon')
 
-class SentimentAnalyzer1:
-    def __init__(self):
-        self.sia = SentimentIntensityAnalyzer()
-
-    def transform_scale(self, score):
-        return 5 * score + 5  # Convert the sentiment score from -1 to 1 scale to 0 to 10 scale
-
-    def calculate_overall_sentiment(self, reviews):
-        compound_scores = [self.sia.polarity_scores(str(review))["compound"] for review in reviews if isinstance(review, str)]
-        overall_sentiment = sum(compound_scores) / len(compound_scores) if compound_scores else 0
-        return self.transform_scale(overall_sentiment)
-
-    def analyze_sentiment(self, reviews):
-        sentiments = [{'compound': self.transform_scale(self.sia.polarity_scores(str(review))["compound"]),
-                       'pos': self.sia.polarity_scores(str(review))["pos"],
-                       'neu': self.sia.polarity_scores(str(review))["neu"],
-                       'neg': self.sia.polarity_scores(str(review))["neg"]}
-                      for review in reviews if isinstance(review, str)]
-        return sentiments
-
-    def interpret_sentiment(self, sentiments):
-        avg_sentiment = sum([sentiment['compound'] for sentiment in sentiments]) / len(sentiments) if sentiments else 0
-        if avg_sentiment >= 6.5:
-            description = "Excellent progress, keep up the good work!"
-        elif avg_sentiment >= 6.2:
-            description = "Good progress, continue to work hard!"
-        else:
-            description = "Needs improvement, stay motivated and keep trying!"
-
-        trend = "No change"
-        if len(sentiments) > 1:
-            first_half_avg = sum([sentiment['compound'] for sentiment in sentiments[:len(sentiments)//2]]) / (len(sentiments)//2)
-            second_half_avg = sum([sentiment['compound'] for sentiment in sentiments[len(sentiments)//2:]]) / (len(sentiments)//2)
-            if second_half_avg > first_half_avg:
-                trend = "Improving"
-            elif second_half_avg < first_half_avg:
-                trend = "Declining"
-
-        return description, trend
-
 class SentimentAnalyzer:
     def __init__(self):
         self.sia = SentimentIntensityAnalyzer()
         self.clf = None
-
 
     def preprocess_text(self, text):
         if isinstance(text, str):
@@ -74,45 +33,9 @@ class SentimentAnalyzer:
         self.clf.fit(X, labels)
         return make_pipeline(vectorizer, self.clf)
 
-
-    def predict_sentiments(self, test_reviews):
-        return self.clf.predict(test_reviews)
-
-    def transform_scale(self, score):
-        return 5 * score + 5  # Convert the sentiment score from -1 to 1 scale to 0 to 10 scale
-
-    def analyze_sentiment(self, reviews):
-        sentiments = [{'compound': self.transform_scale(self.sia.polarity_scores(str(review))["compound"]),
-                       'pos': self.sia.polarity_scores(str(review))["pos"],
-                       'neu': self.sia.polarity_scores(str(review))["neu"],
-                       'neg': self.sia.polarity_scores(str(review))["neg"]}
-                      for review in reviews if isinstance(review, str)]
-        return sentiments
-
-    def calculate_overall_sentiment(self, reviews):
-        compound_scores = [self.sia.polarity_scores(str(review))["compound"] for review in reviews if isinstance(review, str)]
-        overall_sentiment = sum(compound_scores) / len(compound_scores) if compound_scores else 0
-        return self.transform_scale(overall_sentiment)
-
-    def interpret_sentiment(self, sentiments):
-        avg_sentiment = sum([sentiment['compound'] for sentiment in sentiments]) / len(sentiments) if sentiments else 0
-        if avg_sentiment >= 6.5:
-            description = "Excellent progress, keep up the good work!"
-        elif avg_sentiment >= 6.2:
-            description = "Good progress, continue to work hard!"
-        else:
-            description = "Needs improvement, stay motivated and keep trying!"
-
-        trend = "No change"
-        if len(sentiments) > 1:
-            first_half_avg = sum([sentiment['compound'] for sentiment in sentiments[:len(sentiments)//2]]) / (len(sentiments)//2)
-            second_half_avg = sum([sentiment['compound'] for sentiment in sentiments[len(sentiments)//2:]]) / (len(sentiments)//2)
-            if second_half_avg > first_half_avg:
-                trend = "Improving"
-            elif second_half_avg < first_half_avg:
-                trend = "Declining"
-
-        return description, trend
+    def analyze_sentiment(self, review):
+        sentiment_score = self.sia.polarity_scores(str(review))["compound"]
+        return sentiment_score
 
 # Update Streamlit UI setup
 st.title("Student Review Sentiment Analysis")
@@ -133,10 +56,9 @@ if csv_file:
 
     for column in feedback_columns:
         if column in df.columns:
-            reviews = df[column].dropna().astype(str).tolist()
-            sentiments[column] = analyzer.analyze_sentiment(reviews)
+            sentiments[column] = df[column].apply(analyzer.analyze_sentiment)
 
-    overall_sentiments = {column: analyzer.calculate_overall_sentiment(df[column].dropna().astype(str).tolist()) for column in feedback_columns}
+    overall_sentiments = {column: sum(sentiments[column]) / len(sentiments[column]) for column in feedback_columns}
 
     # Plotting sentiment analysis for all categories
     fig, ax = plt.subplots()
@@ -152,13 +74,19 @@ if csv_file:
     # Displaying descriptions
     st.subheader("Overall Sentiment Descriptions")
     for column in feedback_columns:
-        sentiment_description, _ = analyzer.interpret_sentiment(sentiments[column])
-        st.write(f"**{column.capitalize()}**: {sentiment_description}")
+        avg_sentiment = sum(sentiments[column]) / len(sentiments[column])
+        if avg_sentiment >= 0.65:
+            description = "Excellent progress, keep up the good work!"
+        elif avg_sentiment >= 0.62:
+            description = "Good progress, continue to work hard!"
+        else:
+            description = "Needs improvement, stay motivated and keep trying!"
+        st.write(f"**{column.capitalize()}**: {description}")
 
     # Train Naive Bayes classifier
     st.subheader("Naive Bayes Classifier")
     reviews = df[feedback_columns].values.flatten().tolist()
-    labels = [1 if sentiment['compound'] >= 6.5 else 0 for sublist in sentiments.values() for sentiment in sublist]
+    labels = [1 if sentiment >= 0.65 else 0 for sublist in sentiments.values() for sentiment in sublist]
     pipeline = analyzer.train_classifier(reviews, labels)
     st.write("Classifier trained successfully.")
 
