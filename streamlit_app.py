@@ -41,7 +41,7 @@ class SentimentAnalyzer:
 st.title("Student Review Sentiment Analysis")
 
 # Upload CSV file
-csv_file = st.file_uploader("Upload your CSV file")
+csv_file = st.file_uploader("Upload dataset in CSV file")
 
 if csv_file:
     df = pd.read_csv(io.BytesIO(csv_file.read()), encoding='utf-8')
