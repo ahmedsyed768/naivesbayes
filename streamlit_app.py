@@ -33,35 +33,9 @@ class SentimentAnalyzer:
         self.clf.fit(X, labels)
         return make_pipeline(vectorizer, self.clf)
 
-    def predict_sentiments(self, test_reviews):
-        return self.clf.predict(test_reviews)
-
-    def transform_scale(self, score):
-        return 5 * score + 5  # Convert the sentiment score from -1 to 1 scale to 0 to 10 scale
-
-    def calculate_overall_sentiment(self, reviews):
-        compound_scores = [self.sia.polarity_scores(str(review))["compound"] for review in reviews if isinstance(review, str)]
-        overall_sentiment = sum(compound_scores) / len(compound_scores) if compound_scores else 0
-        return self.transform_scale(overall_sentiment)
-
-    def analyze_sentiment(self, reviews):
-        sentiments = [{'compound': self.transform_scale(self.sia.polarity_scores(str(review))["compound"]),
-                       'pos': self.sia.polarity_scores(str(review))["pos"],
-                       'neu': self.sia.polarity_scores(str(review))["neu"],
-                       'neg': self.sia.polarity_scores(str(review))["neg"]}
-                      for review in reviews if isinstance(review, str)]
-        return sentiments
-
-    def interpret_sentiment(self, sentiments):
-        avg_sentiment = sum([sentiment['compound'] for sentiment in sentiments]) / len(sentiments) if sentiments else 0
-        if avg_sentiment >= 6.5:
-            description = "Excellent progress, keep up the good work!"
-        elif avg_sentiment >= 6.2:
-            description = "Good progress, continue to work hard!"
-        else:
-            description = "Needs improvement, stay motivated and keep trying!"
-
-        return description
+    def analyze_sentiment(self, review):
+        sentiment_score = self.sia.polarity_scores(str(review))["compound"]
+        return sentiment_score
 
 # Update Streamlit UI setup
 st.title("Student Review Sentiment Analysis for Teaching")
@@ -73,13 +47,16 @@ if csv_file:
     df = pd.read_csv(io.BytesIO(csv_file.read()), encoding='utf-8')
     st.write(df.head())  # Debug statement to check the loaded data
 
-    # Perform sentiment analysis on the "teaching" column
+    # Perform sentiment analysis
     analyzer = SentimentAnalyzer()
 
+    # Focus on the "teaching" column
     if 'teaching' in df.columns:
         teaching_reviews = df['teaching'].dropna().astype(str).tolist()
-        teaching_sentiments = analyzer.analyze_sentiment(teaching_reviews)
-        overall_teaching_sentiment = analyzer.calculate_overall_sentiment(teaching_reviews)
+        teaching_sentiments = [analyzer.analyze_sentiment(review) for review in teaching_reviews]
+
+        # Calculate overall sentiment score
+        overall_teaching_sentiment = sum(teaching_sentiments) / len(teaching_sentiments)
 
         # Plotting sentiment analysis for the "teaching" category
         fig, ax = plt.subplots()
@@ -94,17 +71,22 @@ if csv_file:
 
         # Displaying descriptions
         st.subheader("Overall Sentiment Description for Teaching")
-        sentiment_description = analyzer.interpret_sentiment(teaching_sentiments)
-        st.write(f"**Teaching**: {sentiment_description}")
+        if overall_teaching_sentiment >= 0.65:
+            description = "Excellent progress, keep up the good work!"
+        elif overall_teaching_sentiment >= 0.62:
+            description = "Good progress, continue to work hard!"
+        else:
+            description = "Needs improvement, stay motivated and keep trying!"
+        st.write(f"**Teaching**: {description}")
 
         # Detailed breakdown of sentiments
         st.subheader("Detailed Breakdown of Sentiments for Teaching")
-        sentiment_breakdown = pd.DataFrame(teaching_sentiments)
+        sentiment_breakdown = pd.DataFrame(teaching_sentiments, columns=['Sentiment Score'])
         st.write(sentiment_breakdown)
 
         # Train Naive Bayes classifier
         st.subheader("Naive Bayes Classifier")
-        labels = [1 if sentiment['compound'] >= 6.5 else 0 for sentiment in teaching_sentiments]
+        labels = [1 if sentiment >= 0.65 else 0 for sentiment in teaching_sentiments]
         pipeline = analyzer.train_classifier(teaching_reviews, labels)
         st.write("Classifier trained successfully.")
 
