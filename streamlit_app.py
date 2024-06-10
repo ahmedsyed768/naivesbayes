@@ -39,7 +39,7 @@ class SentimentAnalyzer:
 st.title("Student Review Sentiment Analysis with implementation of Naive Bayes classifier")
 
 # Load the dataset
-uploaded_file = st.file_uploader("Upload the Kaggle Dataset", type="csv")
+uploaded_file = st.file_uploader("Upload the Kaggle Dataset https://www.kaggle.com/datasets/brarajit18/student-feedback-dataset", type="csv")
 if uploaded_file:
     df = pd.read_csv(uploaded_file, encoding='utf-8')
     st.write(df.head())  # Display the first few rows of the dataset
