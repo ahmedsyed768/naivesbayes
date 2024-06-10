@@ -36,10 +36,10 @@ class SentimentAnalyzer:
         return self.sia.polarity_scores(str(review))
 
 # Streamlit UI setup
-st.title("Student Review Sentiment Analysis")
+st.title("Student Review Sentiment Analysis with implementation of Naive Bayes classifier")
 
 # Load the dataset
-uploaded_file = st.file_uploader("Choose a CSV file", type="csv")
+uploaded_file = st.file_uploader("Upload the Kaggle Dataset", type="csv")
 if uploaded_file:
     df = pd.read_csv(uploaded_file, encoding='utf-8')
     st.write(df.head())  # Display the first few rows of the dataset
