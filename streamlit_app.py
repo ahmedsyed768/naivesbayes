@@ -48,7 +48,7 @@ if uploaded_file:
     analyzer = SentimentAnalyzer()
 
     # Columns to analyze
-    feedback_columns = ['teaching', 'library_facilities', 'examination', 'labwork', 'extracurricular', 'coursecontent']
+    feedback_columns = ['teaching']
     sentiments = {column: [] for column in feedback_columns}
 
     for column in feedback_columns:
